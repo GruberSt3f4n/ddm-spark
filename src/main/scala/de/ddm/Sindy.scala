@@ -32,30 +32,24 @@ object Sindy {
         })
       })
 
-      //combine all datasets into one
+      //union tables and group by values (value, {all_columns_containing_value})
       .reduce(_ union _)
-
-      //group (Column, Value) by Column and just keep Value
       .groupByKey(tuple => tuple._2)
-
-      //create set of the values for each key
       .mapGroups { case (key, iter) => iter.map(_._1).toSet }
 
-      //pair each attribute with all other attributes in set (excluding itself) -> create all tasks
+      //pair each column with all other columns in set (excluding itself) (one set per value)
       .flatMap(groups => groups
         .map(currentKey =>
           (currentKey, groups.filter(key => key != currentKey))))
 
-      //group pairs by key
+      //find INDs
       .groupByKey(row => row._1)
-
-      //for each key produce set of keys that are common to it (set of INDs)
       .mapGroups { case (key, iter) => (key, iter.map(_._2).reduce(_ intersect _))}
 
       //filter where set of common keys is empty (where no INDs were found)
       .filter(row => row._2.nonEmpty)
 
-      //collect results and sort by key
+      //collect results and sort by Column
       .collect()
       .sortBy(ind => ind._1)
 
